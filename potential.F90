@@ -132,11 +132,11 @@ program potential
 #if analytic
   outfname = 'data/field_'// &
     synfilename(index(synfilename, '/',.true.)+len('synmap_')+1:index(synfilename, '.dat')-1)// &
-    '_'//lmaxstr//'-anal'//nsplitstr//'.dat'
+    '_'//lmaxstr//'_anal'//nsplitstr//'.dat'
 #elif fft
   outfname = 'data/field_'// &
     synfilename(index(synfilename, '/',.true.)+len('synmap_')+1:index(synfilename, '.dat')-1)// &
-    '_'//lmaxstr//'-fft.dat'
+    '_'//lmaxstr//'_fft.dat'
 #endif
   print*, 'Writing to file '//outfname
 
