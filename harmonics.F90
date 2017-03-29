@@ -217,11 +217,12 @@ module harmonics
     do while (exp(-0.25_np*(pi/ia)**2*lmax*(lmax+1)) < 0.1_np)
       ia = ia + 10
     enddo
+    ia = ia - 10
 
     if (present(nfilter)) then
       if (nfilter /= 0) ia = nfilter
     endif
-
+    
     ls = [(il, il=0,lmax)]
     filter = exp(-0.25_np*ls*(ls+1)*(pi/(ia))**2)
 
