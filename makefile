@@ -2,6 +2,10 @@ FC = gfortran
 LIBRARIES = -I/usr/include -lfftw3 -lm
 DEFINE = -D$(sum)
 
+ifeq ($(sum), )
+  sum = fft
+endif
+
 ifeq ($(strip $(mode)),debug)
 	FLAGS = -O0 -g -fbounds-check
 else
