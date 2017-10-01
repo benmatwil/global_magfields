@@ -48,27 +48,59 @@ module harmonics
 
     implicit none
 
-    integer, parameter :: nsplit = 16
+    integer, parameter :: nsplit = 4
     integer :: ip, ir, it, isplit
 
 #if fft
-    ntheta = (lmax+1)+1
-    nphi = 2*(lmax+1)+1
-    nrad = 0
-    do while (exp(pi*nrad/(lmax+1)/2) < rmax)
-      nrad = nrad + 1
-    enddo
-    ! nrad = ceiling(2*(lmax+1)*log(rmax)/pi)
+    if (.true.) then
+      ntheta = (lmax+1)+1
+      nphi = 2*(lmax+1)+1
+      nrad = 0
+      do while (exp(pi*nrad/(lmax+1)/2) < rmax)
+        nrad = nrad + 1
+      enddo
+      ! nrad = ceiling(2*(lmax+1)*log(rmax)/pi)
 
-    allocate(rads(nrad), thetas(ntheta), phis(nphi))
+      allocate(rads(nrad), thetas(ntheta), phis(nphi))
 
-    rads = exp((pi/(lmax+1)/2)*real([(ir, ir=0,nrad-1)], np))
-    print*, rads(1), rads(nrad)
-    rads = (rmax - 1)*(rads - 1)/(rads(nrad) - 1) + 1 ! re-scale to 1 to rmax
-    ! rads = 1.5_np*(real([(ir, ir=0,nrad-1)], np))**3/(nrad-1)**3 + 1 ! cubic grid
+      rads = exp((pi/(lmax+1)/2)*real([(ir, ir=0,nrad-1)], np))
+      print*, rads(1), rads(nrad)
+      rads = (rmax - 1)*(rads - 1)/(rads(nrad) - 1) + 1 ! re-scale to 1 to rmax
+      ! rads = 1.5_np*(real([(ir, ir=0,nrad-1)], np))**3/(nrad-1)**3 + 1 ! cubic grid
 
-    thetas = pi*real([(it, it=0,ntheta-1)], np)/(ntheta-1)
-    phis = 2*pi*real([(ip, ip=0,nphi-1)], np)/(nphi-1)
+      thetas = pi*real([(it, it=0,ntheta-1)], np)/(ntheta-1)
+      phis = 2*pi*real([(ip, ip=0,nphi-1)], np)/(nphi-1)
+    else
+      ntheta = (lmax+1)+1
+      ntheta = nsplit*ntheta-(nsplit-1)
+      nphi = 2*(lmax+1)+1
+      nrad = 0
+      do while (exp(pi*nrad/(lmax+1)/2) < rmax)
+        nrad = nrad + 1
+      enddo
+      ! nrad = ceiling(2*(lmax+1)*log(rmax)/pi)
+      ! nrad = nsplit*nrad-(nsplit-1)
+
+      allocate(rads(nrad), thetas(ntheta), phis(nphi))
+
+      ! do ir = 0, nrad-1, nsplit
+      !   rads(ir+1) = exp((pi/(lmax+1)/2)*(ir/nsplit))
+      ! enddo
+      ! print*, rads(1), rads(nrad)
+      ! do ir = 2, nrad, nsplit
+      !   do isplit = 0, nsplit-2
+      !     rads(ir+isplit) = ((nsplit-isplit-1)*rads(ir-1) + (isplit+1)*rads(ir+nsplit-1))/nsplit
+      !   enddo
+      ! enddo
+
+      rads = exp((pi/(lmax+1)/2)*real([(ir, ir=0,nrad-1)], np))
+      print*, rads(1), rads(nrad)
+      rads = (rmax - 1)*(rads - 1)/(rads(nrad) - 1) + 1 ! re-scale to 1 to rmax
+      ! rads = 1.5_np*(real([(ir, ir=0,nrad-1)], np))**3/(nrad-1)**3 + 1 ! cubic grid
+
+      thetas = pi*real([(it, it=0,ntheta-1)], np)/(ntheta-1)
+      phis = 2*pi*real([(ip, ip=0,nphi-1)], np)/(nphi-1)
+    endif
   
 #elif analytic
 
@@ -395,7 +427,7 @@ module harmonics
     ! calculating grid analytically
     !$omp parallel do private(ir, it, ip, im, il, mi, jm, expphi)
     do ir = 1, nrad
-      print*, ir
+      if (mod(ir, 20) == 0) print*, ir
       do it = 1, ntheta
         do ip = 1, nphi
           do im = -lmax, lmax

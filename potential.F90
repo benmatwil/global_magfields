@@ -130,11 +130,11 @@ program potential
   ! writing final field to file
   write(lmaxstr,'(I4.4)') lmax
 #if analytic
-  outfname = 'data/field_'// &
+  outfname = 'data/pfss_field_'// &
     synfilename(index(synfilename, '/',.true.)+len('synmap_')+1:index(synfilename, '.dat')-1)// &
     '_'//lmaxstr//'_anal'//nsplitstr//'.dat'
 #elif fft
-  outfname = 'data/field_'// &
+  outfname = 'data/pfss_field_'// &
     synfilename(index(synfilename, '/',.true.)+len('synmap_')+1:index(synfilename, '.dat')-1)// &
     '_'//lmaxstr//'_fft.dat'
 #endif
