@@ -15,7 +15,7 @@ FLAGS += -Jmod -fopenmp
 
 all : potential
 
-potential : harmonics.F90 potential.F90
+potential : harmonics.F90 pfss.F90
 	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $(DEFINE) $^ -o $@
 
 null_check : harmonics.F90 null_check.f90

@@ -1,4 +1,4 @@
-program potential
+program pfss
 
   use iso_fortran_env, only : np => real64
   use harmonics
