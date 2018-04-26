@@ -254,7 +254,7 @@ module harmonics
     if (present(nfilter)) then
       if (nfilter /= 0) ia = nfilter
     endif
-    
+    print*, 'Using filter a of ', ia
     ls = [(il, il=0,lmax)]
     filter = exp(-0.25_np*ls*(ls+1)*(pi/(ia))**2)
 
@@ -483,20 +483,20 @@ module harmonics
       enddo
       ! fft for each constant theta to get field values
       do it = 1, ntheta
-        fft_in = bbr(:,it)
+        fft_in = bbr(:, it)
         call fftw_execute_dft(plan, fft_in, fft_out)
-        br(1:nphi-1,it,ir) = fft_out
-        br(nphi,it,ir) = fft_out(1)
+        br(1:nphi-1, it, ir) = fft_out
+        br(nphi, it, ir) = fft_out(1)
 
-        fft_in = bbt(:,it)
+        fft_in = bbt(:, it)
         call fftw_execute_dft(plan, fft_in, fft_out)
-        bt(1:nphi-1,it,ir) = fft_out
-        bt(nphi,it,ir) = fft_out(1)
+        bt(1:nphi-1, it, ir) = fft_out
+        bt(nphi, it, ir) = fft_out(1)
 
-        fft_in = bbp(:,it)
+        fft_in = bbp(:, it)
         call fftw_execute_dft(plan, fft_in, fft_out)
-        bp(1:nphi-1,it,ir) = fft_out
-        bp(nphi,it,ir) = fft_out(1)
+        bp(1:nphi-1, it, ir) = fft_out
+        bp(nphi, it, ir) = fft_out(1)
       enddo
     enddo
 

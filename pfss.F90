@@ -125,7 +125,7 @@ program pfss
   deallocate(qlm, qlm_sin, dqlm, blm, alm)
 
   call cpu_time(finish)
-  print*, ceiling(finish-start), 'seconds to make grid'
+  print*, real(finish-start, 4), 'seconds to make grid'
 
   ! writing final field to file
   write(lmaxstr,'(I4.4)') lmax
