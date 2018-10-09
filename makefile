@@ -1,32 +1,33 @@
 FC = gfortran
 LIBRARIES = -I/usr/include -lfftw3 -lm
+DEFINE = -D$(sum)
 
 ifeq ($(sum), )
   sum = fft
 endif
 
-DEFINE = -D$(sum)
-
-ifeq ($(strip $(mode)), debug)
+ifeq ($(strip $(mode)),debug)
 	FLAGS = -O0 -g -fbounds-check
 else
 	FLAGS = -O3 
 endif
 FLAGS += -Jmod -fopenmp
 
-all : pfss mhs_finite mhs_infinite
+all : pfss
 
 pfss : harmonics.F90 pfss.F90
-	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $(DEFINE) -Dpfss $^ -o $@
+	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $(DEFINE) $^ -o $@
 
-mhs_finite : harmonics.F90 pfss.F90
-	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $(DEFINE) -Dmhs -Dfinite $^ -o $@
-
-mhs_infinite : harmonics.F90 pfss.F90
-	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $(DEFINE) -Dmhs -Dinfinite $^ -o $@
+null_check : harmonics.F90 null_check.f90
+	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $^ -o $@
 
 clean :
-	@rm -r pfss mhs_finite mhs_infinite mod/*.mod
+	@rm -r pfss mod/*.mod
 
 datatidy :
 	@rm hmi*/synmap*.dat
+
+python : harmpy.f90
+	f2py -c -m harmpy harmpy.f90 --f90flags='-fopenmp -g' -lgomp
+
+	# gfortran fftwtest.f90 -o fftwtest -I/usr/include -lfftw3

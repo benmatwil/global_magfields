@@ -1,4 +1,4 @@
-program global_magfield
+program pfss
 
   use iso_fortran_env, only : np => real64
   use harmonics
@@ -8,7 +8,7 @@ program global_magfield
   ! reading in from the command line
   character(50) :: arg
   integer :: iarg, iinput
-  integer :: ic = 0, lc = 0, nfilter = 0, ac = 0, dc = 0
+  integer :: ic = 0, lc = 0, nfilter = 0
   real(np) :: modelrad = 0
   
   ! timing
@@ -24,9 +24,6 @@ program global_magfield
   real(np), dimension(:,:,:), allocatable :: br, bt, bp, brw, btw, bpw
   character(100) :: outfname, outputdir
   character(4) :: lmaxstr
-  character(:), allocatable :: extra
-  character(7) :: alphastr, dstr
-  character(:), allocatable :: typestr
 
   ! loop parameters
   integer :: ilat, ilon, ir, ip, it
@@ -34,7 +31,6 @@ program global_magfield
   ! ################################################################################
 
   call cpu_time(start)
-  outputdir = 'data'
 
   if (command_argument_count() == 0) then
     stop 'No command line parameters given'
@@ -63,32 +59,11 @@ program global_magfield
         ! read in model radius R_max
         call get_command_argument(iarg+1,arg)
         read(arg,*) modelrad
-      elseif (arg(1:2) == '-a' .or. arg(1:7) == '--alpha') then
-        ! read in alpha
-        call get_command_argument(iarg+1,arg)
-        read(arg,*) alpha
-        ac = 1
-        zeroalpha = .false.
-        if (trim(arg) == '0' .or. trim(arg) == '0.' .or. trim(arg) == '0.0') zeroalpha = .true.
-      elseif (arg(1:2) == '-d') then
-        ! read in d
-        call get_command_argument(iarg+1,arg)
-        read(arg,*) d
-        dc = 1
-      elseif (arg(1:2) == '-e') then
-        ! read extra file name
-        call get_command_argument(iarg+1,arg)
-        extra = '_'//trim(arg)
       endif
     enddo
     if (ic == 0 .or. lc == 0) then
       stop "Haven't given a data input filename (-i) and lmax (-l)"
     endif
-#if mhs
-    if (ac == 0 .or. dc == 0) then
-      stop "Haven't given a data input alpha (-a or --alpha) and d (-d)"
-    endif
-#endif
   endif
 
   ! Parameters to be read in from command line in final version
@@ -101,10 +76,6 @@ program global_magfield
   print*, 'lmax is', lmax
   if (mod(lmax,2) == 0) stop 'lmax is not odd'
   print*, 'rmax is', rmax
-#if mhs
-  print*, 'alpha is', alpha
-  print*, 'd is', d
-#endif
 
   call calc_grids()
 
@@ -157,49 +128,17 @@ program global_magfield
   print*, real(finish-start, 4), 'seconds to make grid'
 
   ! writing final field to file
-#if pfss
   write(lmaxstr,'(I4.4)') lmax
 #if analytic
-  outfname = trim(outputdir)//'/pfss_field_'// &
+  outfname = 'data/pfss_field_'// &
     synfilename(index(synfilename, '/',.true.)+len('synmap_')+1:index(synfilename, '.dat')-1)// &
     '_'//lmaxstr//'_anal'//nsplitstr//'.dat'
 #elif fft
-  outfname = trim(outputdir)//'/pfss_field_'// &
+  outfname = 'data/pfss_field_'// &
     synfilename(index(synfilename, '/',.true.)+len('synmap_')+1:index(synfilename, '.dat')-1)// &
-    '_'//lmaxstr//'_fft'//extra//'.dat'
+    '_'//lmaxstr//'_fft.dat'
 #endif
   print*, 'Writing to file '//outfname
-#elif mhs
-  write(lmaxstr,'(I4.4)') lmax
-  write(alphastr,'(F7.3)') alpha
-  write(dstr,'(F7.3)') d
-
-
-  if (alpha < 0) then
-    if (len(trim(adjustl(alphastr))) == 6) alphastr = '-0'//alphastr(3:7)
-  else
-    if (len(trim(adjustl(alphastr))) == 5) alphastr = '00'//alphastr(3:7)
-    if (len(trim(adjustl(alphastr))) == 6) alphastr = '0'//alphastr(2:7)
-  endif
-
-  if (d < 0) then
-    if (len(trim(adjustl(dstr))) == 6) dstr = '-0'//dstr(3:7)
-  else
-    if (len(trim(adjustl(dstr))) == 5) dstr = '00'//dstr(3:7)
-    if (len(trim(adjustl(dstr))) == 6) dstr = '0'//dstr(2:7)
-  endif
-  
-#if finite
-  typestr = 'finite'
-#elif infinite
-  typestr = 'infinite'
-#endif
-
-  outfname = trim(outputdir)//'/mhs_field_'// &
-    synfilename(index(synfilename, '/',.true.)+len('synmap_')+1:index(synfilename, '.dat')-1)// &
-    '_'//lmaxstr//'_fft_alpha_'//alphastr//'_d_'//dstr//'-'//typestr//extra//'.dat'
-  print*, 'Writing to file '//outfname
-#endif
 
   allocate(brw(nrad, ntheta, nphi), btw(nrad, ntheta, nphi), bpw(nrad, ntheta, nphi))
 
