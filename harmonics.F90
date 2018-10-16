@@ -19,6 +19,10 @@ module harmonics
   
   integer :: lmax
   real(np) :: rmax
+  real(np) :: alpha, d
+  logical :: zeroalpha
+
+  integer, parameter :: nsplit = 4
 
   ! grid coordinates
   integer :: nrad, ntheta, nphi
@@ -48,79 +52,27 @@ module harmonics
 
     implicit none
 
-    integer, parameter :: nsplit = 4
     integer :: ip, ir, it, isplit
 
 #if fft
-    if (.true.) then
-      ntheta = (lmax+1)+1
-      nphi = 2*(lmax+1)+1
-      nrad = 0
-      do while (exp(pi*nrad/(lmax+1)/2) < rmax)
-        nrad = nrad + 1
-      enddo
-      ! nrad = ceiling(2*(lmax+1)*log(rmax)/pi)
 
-      allocate(rads(nrad), thetas(ntheta), phis(nphi))
+    ntheta = (lmax+1)+1
+    nphi = 2*(lmax+1)+1
+    nrad = 0
+    do while (exp(pi*nrad/(lmax+1)/2) < rmax)
+      nrad = nrad + 1
+    enddo
 
-      rads = exp((pi/(lmax+1)/2)*real([(ir, ir=0,nrad-1)], np))
-      print*, rads(1), rads(nrad)
-      rads = (rmax - 1)*(rads - 1)/(rads(nrad) - 1) + 1 ! re-scale to 1 to rmax
-      ! rads = 1.5_np*(real([(ir, ir=0,nrad-1)], np))**3/(nrad-1)**3 + 1 ! cubic grid
+    allocate(rads(nrad), thetas(ntheta), phis(nphi))
 
-      thetas = pi*real([(it, it=0,ntheta-1)], np)/(ntheta-1)
-      phis = 2*pi*real([(ip, ip=0,nphi-1)], np)/(nphi-1)
-    else
-      ntheta = (lmax+1)+1
-      ntheta = nsplit*ntheta-(nsplit-1)
-      nphi = 2*(lmax+1)+1
-      nrad = 0
-      do while (exp(pi*nrad/(lmax+1)/2) < rmax)
-        nrad = nrad + 1
-      enddo
-      ! nrad = ceiling(2*(lmax+1)*log(rmax)/pi)
-      ! nrad = nsplit*nrad-(nsplit-1)
+    rads = exp((pi/(lmax+1)/2)*real([(ir, ir=0,nrad-1)], np))
+    print*, rads(1), rads(nrad)
+    rads = (rmax - 1)*(rads - 1)/(rads(nrad) - 1) + 1 ! re-scale to 1 to rmax
 
-      allocate(rads(nrad), thetas(ntheta), phis(nphi))
-
-      ! do ir = 0, nrad-1, nsplit
-      !   rads(ir+1) = exp((pi/(lmax+1)/2)*(ir/nsplit))
-      ! enddo
-      ! print*, rads(1), rads(nrad)
-      ! do ir = 2, nrad, nsplit
-      !   do isplit = 0, nsplit-2
-      !     rads(ir+isplit) = ((nsplit-isplit-1)*rads(ir-1) + (isplit+1)*rads(ir+nsplit-1))/nsplit
-      !   enddo
-      ! enddo
-
-      rads = exp((pi/(lmax+1)/2)*real([(ir, ir=0,nrad-1)], np))
-      print*, rads(1), rads(nrad)
-      rads = (rmax - 1)*(rads - 1)/(rads(nrad) - 1) + 1 ! re-scale to 1 to rmax
-      ! rads = 1.5_np*(real([(ir, ir=0,nrad-1)], np))**3/(nrad-1)**3 + 1 ! cubic grid
-
-      thetas = pi*real([(it, it=0,ntheta-1)], np)/(ntheta-1)
-      phis = 2*pi*real([(ip, ip=0,nphi-1)], np)/(nphi-1)
-    endif
+    thetas = pi*real([(it, it=0,ntheta-1)], np)/(ntheta-1)
+    phis = 2*pi*real([(ip, ip=0,nphi-1)], np)/(nphi-1)
   
 #elif analytic
-
-    ! ntheta = (lmax+1)+1
-    ! nphi = 2*(lmax+1)+1
-    ! nrad = 0
-    ! do while (exp(pi*nrad/(lmax+1)/2) < rmax)
-    !   nrad = nrad + 1
-    ! enddo
-    ! ! nrad = ceiling(2*(lmax+1)*log(rmax)/pi)
-
-    ! allocate(rads(nrad), thetas(ntheta), phis(nphi))
-
-    ! rads = exp((pi/(lmax+1)/2)*real([(ir, ir=0,nrad-1)], np))
-    ! print*, rads(1), rads(nrad)
-    ! rads = (rmax - 1)*(rads - 1)/(rads(nrad) - 1) + 1 ! re-scale to 1 to rmax
-    ! ! rads = 1.5_np*(real([(ir, ir=0,nrad-1)], np))**3/(nrad-1)**3 + 1 ! cubic grid
-
-    ! thetas = pi*real([(it, it=0,ntheta-1)], np)/(ntheta-1)
-    ! phis = 2*pi*real([(ip, ip=0,nphi-1)], np)/(nphi-1)
 
     nrad = 0
     do while (exp(pi*nrad/(lmax+1)/2) < rmax)
@@ -170,12 +122,11 @@ module harmonics
 
     integer :: il, im
 
-    allocate(coeff1(0:lmax,0:lmax), coeff2(0:lmax,0:lmax), dfact(0:lmax,0:lmax))
+    allocate(coeff1(0:lmax, 0:lmax), coeff2(0:lmax, 0:lmax), dfact(0:lmax, 0:lmax))
     coeff1 = 0
     coeff2 = 0
     dfact = 0
 
-    !$omp parallel do private(il)
     do im = 0, lmax
       do il = im, lmax
         coeff1(il, im) = sqrt(real(4*il**2 - 1, np))
@@ -201,12 +152,11 @@ module harmonics
 
     if (.not. allocated(coeff1)) call calc_coeffs()
 
-    ntheta = size(xs,1)
+    ntheta = size(xs, 1)
 
-    allocate(plm(0:lmax,0:lmax,ntheta))
+    allocate(plm(0:lmax, 0:lmax, ntheta))
     plm = 0
 
-    !$omp parallel do private(x, y, im, il)
     do it = 1, ntheta
       x = xs(it)
       y = sqrt(1 - x**2)
@@ -242,8 +192,8 @@ module harmonics
     complex(np), dimension(:,:), allocatable :: br_blm
     real(np), dimension(:,:), allocatable :: synmap
   
-    nlon = size(synmap,1)
-    nlat = size(synmap,2)
+    nlon = size(synmap, 1)
+    nlat = size(synmap, 2)
     
     ia = 10
     do while (exp(-0.25_np*(pi/ia)**2*lmax*(lmax+1)) < 0.1_np)
@@ -260,16 +210,19 @@ module harmonics
 
     ! not technically calculating the Blms at the correct points... should this be corrected?
     ! may require not using a fft - perhaps quite slow
-    allocate(br_blm(0:lmax,nlat))
+    allocate(br_blm(0:lmax, nlat))
+    br_blm = 0
 
     allocate(fft_in(nlon), fft_out(nlon))
-    plan = fftw_plan_dft_1d(nlon, fft_in,fft_out, fftw_forward,fftw_measure)
+    fft_in = 0
+    fft_out = 0
+    plan = fftw_plan_dft_1d(nlon, fft_in, fft_out, fftw_forward, fftw_measure)
     
     !$omp parallel do private(fft_in, fft_out)
     do ilat = 1, nlat
-      fft_in = synmap(:,ilat)
+      fft_in = synmap(:, ilat)
       call fftw_execute_dft(plan, fft_in, fft_out)
-      br_blm(:,ilat) = fft_out(1:lmax+1)/nlon
+      br_blm(:, ilat) = fft_out(1:lmax+1)/nlon
     enddo
 
     call fftw_destroy_plan(plan)
@@ -281,9 +234,14 @@ module harmonics
     blm0 = 0
     do im = 0, lmax
       do il = im, lmax
+#if pfss
         blm0(il, im) = dt*sum(br_blm(im, :)*plm(il, im, :))*filter(il)
+#elif mhs
+        blm0(il, im) = dt*sum(br_blm(im, :)*plm(il, im, :))*filter(il)/il/(il+1)
+#endif
       enddo
     enddo
+    blm0(0, 0) = 0
 
   end subroutine
 
@@ -309,7 +267,7 @@ module harmonics
     allocate(qlm(0:lmax, 0:lmax, ntheta), dqlm(0:lmax, 0:lmax, ntheta))
     qlm = 0
     dqlm = 0
-    !$omp parallel do private(x, y, im, il, c1, c2)
+
     do it = 1, ntheta
       x = cos(theta(it))
       y = sin(theta(it))
@@ -346,14 +304,13 @@ module harmonics
 
     if (ntheta > 1) then
       ! assuming the set of theta end at the poles
-      ! !$omp parallel do
       do it = 2, ntheta-1
-        qlm_sin(:,1:,it) = qlm(:,1:,it)/sin(theta(it))
+        qlm_sin(:, 1:, it) = qlm(:, 1:, it)/sin(theta(it))
       enddo
-      qlm_sin(:,1,1) = qlm_sin(:,1,2)
-      qlm_sin(:,1,ntheta) = qlm_sin(:,1,ntheta-1)
+      qlm_sin(:, 1, 1) = qlm_sin(:, 1, 2)
+      qlm_sin(:, 1, ntheta) = qlm_sin(:, 1, ntheta-1)
     else
-      qlm_sin(:,1:,1) = qlm(:,1:,1)/sin(theta(1))
+      qlm_sin(:, 1:, 1) = qlm(:, 1:, 1)/sin(theta(1))
     endif
 
   end
@@ -366,36 +323,134 @@ module harmonics
 
     implicit none
 
+    ! this can be updated to real128 for newer versions of gfortran
+    integer, parameter :: qp = 16
     integer :: ir, il, im, nrad
     real(np), dimension(:) :: rads
+    complex(qp), dimension(:), allocatable :: rads1
+    
+    complex(qp), dimension(:, :), allocatable :: rdep_blm, rdep_alm
+    
     integer, dimension(0:lmax) :: ls
-    real(np), dimension(0:lmax) :: r_rsun, r_rmax, div_fact
-    real(np), dimension(:,:), allocatable :: rdep_blm, rdep_alm
 
-    nrad = size(rads,1)
-    allocate(rdep_blm(0:lmax,nrad), rdep_alm(0:lmax,nrad))
+#if pfss 
+    real(np), dimension(0:lmax) :: r_rsun, r_rmax, div_fact
+#elif mhs
+    real(qp) :: r_rsun, r_rmax
+    real(qp), dimension(0:lmax) :: div_fact
+#endif
+    
+    complex(qp) :: bess10
+    complex(qp), dimension(:,:), allocatable :: bess1, bess2, dbess1, dbess2
+    complex(qp), dimension(:,:), allocatable :: ibess1
+    
+    complex(qp), dimension(:), allocatable :: d1, d2
+
+    nrad = size(rads, 1)
+    allocate(rdep_blm(0:lmax, nrad), rdep_alm(0:lmax, nrad))
+    rdep_alm = 0
+    rdep_blm = 0
+
+#if pfss
     
     ls = [(il, il=0,lmax)]
     div_fact = ls + 1 + ls*(rmax**(-2*ls - 1))
     
-    !$omp parallel do private(r_rsun, r_rmax)
     do ir = 1, nrad
       r_rsun = rads(ir)**(-ls - 2)
       r_rmax = (rads(ir)/rmax)**(2*ls + 1)
 
-      rdep_blm(:,ir) = r_rsun*(ls + 1 + ls*r_rmax)/div_fact
-      rdep_alm(:,ir) = r_rsun*(r_rmax - 1)/div_fact
+      rdep_blm(:, ir) = r_rsun*(ls + 1 + ls*r_rmax)/div_fact
+      rdep_alm(:, ir) = r_rsun*(r_rmax - 1)/div_fact
     enddo
 
+#elif mhs
+
+    allocate(rads1(nrad))
+    rads1 = alpha*(rads + d)
+
+    allocate(bess1(-2:lmax+2, nrad), bess2(-2:lmax+2, nrad))
+    allocate(dbess1(0:lmax, nrad), dbess2(0:lmax, nrad))
+    bess1 = 0
+    bess2 = 0
+    dbess1 = 0
+    dbess2 = 0
+    
+    ! calculate all required bessel functions
+    ! bess1(0,:) = sqrt(2/pi/rads1)*sin(rads1)
+    ! bess1(1,:) = sqrt(2/pi/rads1)*(sin(rads1)/rads1 - cos(rads1))
+
+    allocate(ibess1(nrad, 3))
+    ibess1(:, 1) = 0
+    ibess1(:, 2) = 1
+    do il = lmax+2, -2, -1
+      ibess1(:, 3) = (2*il + 3)*ibess1(:, 2)/rads1 - ibess1(:, 1)
+      ibess1(:, 1:2) = ibess1(:, 2:3)
+      bess1(il, :) = ibess1(:, 3)
+    enddo
+
+    do ir = 1, nrad
+      bess10 = sqrt(2/pi/rads1(ir))*sin(rads1(ir))
+      bess1(:, ir) = bess1(:, ir)*bess10/bess1(0, ir)
+    enddo
+    
+    bess2(-2, :) = sqrt(2/pi/rads1)*(cos(rads1) - sin(rads1)/rads1)
+    bess2(-1, :) = sqrt(2/pi/rads1)*sin(rads1)
+    bess2(0, :) = -sqrt(2/pi/rads1)*cos(rads1)
+    bess2(1, :) = -sqrt(2/pi/rads1)*(cos(rads1)/rads1 + sin(rads1))
+    do il = 2, lmax+2
+      bess2(il, :) = ((2*il - 1)*bess2(il-1, :) - rads1*bess2(il-2, :))/rads1
+    enddo
+    ! wronskian if required    
+    ! bess1(il,:) = (2/pi/rads1 + bess2(il,:)*bess1(il-1,:))/bess2(il-1,:)
+
+    ! and all the derivatives
+    dbess1(0, :) = alpha*sqrt(2/pi/rads1)*(cos(rads1) - sin(rads1)/rads1/2)
+    dbess2(0, :) = alpha*sqrt(2/pi/rads1)*(sin(rads1) + cos(rads1)/rads1/2)
+
+    do il = 1, lmax
+      dbess1(il, :) = alpha*(bess1(il-1, :) - (il + 0.5_qp)*bess1(il, :)/rads1)
+      dbess2(il, :) = alpha*(bess2(il-1, :) - (il + 0.5_qp)*bess2(il, :)/rads1)
+    enddo
+    
+    if (zeroalpha) then
+      print*, 'Using alpha = 0 case'
+      ls = [(il, il=0,lmax)]
+      do ir = 1, nrad
+        r_rsun = (rads(ir) + d)/(1 + d)
+        r_rmax = (rads(ir) + d)/(rmax + d)
+        div_fact = ls + 1 + ls*((1 + d)/(rmax + d))**(2*ls + 1)
+
+        rdep_blm(:, ir) = 1/rads(ir) * (r_rsun)**(-ls) &
+          *( ( ls + 1 + ls*r_rmax**(2*ls + 1) ) / div_fact )
+        rdep_alm(:, ir) = 1/rads(ir) * (r_rsun)**(-ls) / (rads(ir) + d) * ls*(ls + 1) &
+          *( ( r_rmax**(2*ls + 1) - 1 ) / div_fact )
+      enddo
+    else
+      allocate(d1(0:lmax), d2(0:lmax))
+      d1 = 0
+      d2 = 0
+      do ir = 1, nrad
+        d1 = 2*rads1(nrad)*dbess1(0:lmax, nrad) + bess1(0:lmax, nrad)
+        d2 = 2*rads1(nrad)*dbess2(0:lmax, nrad) + bess2(0:lmax, nrad)
+
+        rdep_blm(:, ir) = sqrt((rads(ir) + d)/(1 + d))*1/rads(ir) &
+          *(d1*bess2(0:lmax, ir) - d2*bess1(0:lmax, ir))/(d1*bess2(0:lmax, 1) - d2*bess1(0:lmax, 1))
+        rdep_alm(:, ir) = 1/sqrt(1 + d)/sqrt(rads(ir) + d)/rads(ir) &
+          *((rads(ir) + d)*(d1*dbess2(0:lmax, ir) - d2*dbess1(0:lmax, ir)) + 0.5_qp*(d1*bess2(0:lmax, ir) - d2*bess1(0:lmax, ir))) &
+          /(d1*bess2(0:lmax, 1) - d2*bess1(0:lmax, 1))
+      enddo
+    endif
+
+#endif
+
     allocate(blm(0:lmax, 0:lmax, nrad))
-    ! !$omp parallel do
+    blm = 0
     do ir = 1, nrad
       blm(:, :, ir) = blm0
     enddo
-    !deallocate(blm0)
 
     alm = blm
-    ! !$omp parallel do
     do im = 0, lmax
       blm(:, im, :) = blm(:, im, :)*rdep_blm(:, :)
       alm(:, im, :) = alm(:, im, :)*rdep_alm(:, :)
@@ -455,9 +510,12 @@ module harmonics
 #elif fft
 
     allocate(bbr(nphi-1, ntheta), bbt(nphi-1, ntheta), bbp(nphi-1, ntheta))
+    bbr = 0
+    bbt = 0
+    bbp = 0
     
-    allocate(fft_in(size(bbr,1)), fft_out(size(bbr,1)))
-    plan = fftw_plan_dft_1d(size(fft_in,1), fft_in,fft_out, fftw_backward,fftw_measure)
+    allocate(fft_in(size(bbr, 1)), fft_out(size(bbr, 1)))
+    plan = fftw_plan_dft_1d(size(fft_in, 1), fft_in, fft_out, fftw_backward, fftw_measure)
 
     !$omp parallel do private(im, mi, il, bbr, bbt, bbp, jm, fft_in, fft_out)
     do ir = 1, nrad
@@ -466,13 +524,21 @@ module harmonics
       bbt = 0
       bbp = 0
       do im = lmax, 0, -1
-        mi = cmplx(0,im,np)
+        mi = cmplx(0, im, np)
         jm = im + 1
         do il = lmax, im, -1
           ! sum over l first in preparation for fft
+#if pfss
           bbr(jm, :) = bbr(jm, :) + blm(il, im, ir)*qlm(il, im, :)
           bbt(jm, :) = bbt(jm, :) + alm(il, im, ir)*dqlm(il, im, :)
           bbp(jm, :) = bbp(jm, :) + mi*alm(il, im, ir)*qlm_sin(il, im, :)
+#elif mhs
+          bbr(jm, :) = bbr(jm, :) + il*(il+1)*blm(il, im, ir)*qlm(il, im, :)/rads(ir)
+          bbt(jm, :) = bbt(jm, :) + (mi*alpha*blm(il, im, ir)*qlm_sin(il, im, :) + &
+            alm(il, im, ir)*dqlm(il, im, :))
+          bbp(jm, :) = bbp(jm, :) + (-alpha*blm(il, im, ir)*dqlm(il, im, :) + &
+            mi*alm(il, im, ir)*qlm_sin(il, im, :))
+#endif
         enddo
         if (im > 0) then
           ! use the conjugation for negative m rather than direct calculation
@@ -504,52 +570,6 @@ module harmonics
     deallocate(fft_in, fft_out)
 
 #endif
-
-  end
-
-  ! ################################################################################
-
-  function calc_point(r, theta, phi)
-
-    ! need to have calculated blm(rsun) first
-    ! r and theta calculated by sending the correct info to other routines
-
-    implicit none
-
-    real(np) :: r, theta, phi, calc_point(3)
-    integer :: il, im, jm
-    complex(np) :: mi, expphi
-    real(np) :: br, bt, bp
-
-    call calc_qlms([theta])
-    call calc_rdep([r])
-
-    br = 0
-    bt = 0
-    bp = 0
-
-    do im = -lmax, lmax
-      jm = abs(im)
-      mi = cmplx(0.0_np,1.0_np,np)*jm
-      expphi = exp(mi*phi)
-      if (im >= 0) then
-        do il = lmax, abs(im), -1
-          br = br + blm(il, jm, 1)*qlm(il, jm, 1)*expphi
-          bt = bt + alm(il, jm, 1)*dqlm(il, jm, 1)*expphi
-          bp = bp + mi*alm(il, jm, 1)*qlm_sin(il, jm, 1)*expphi
-        enddo
-      else
-        do il = lmax, abs(im), -1
-          br = br + conjg(blm(il, jm, 1)*qlm(il, jm, 1)*expphi)
-          bt = bt + conjg(alm(il, jm, 1)*dqlm(il, jm, 1)*expphi)
-          bp = bp + conjg(mi*alm(il, jm, 1)*qlm_sin(il, jm, 1)*expphi)
-        enddo
-      endif
-    enddo
-
-    deallocate(qlm, dqlm, qlm_sin, alm, blm)
-
-    calc_point = [br, bt, bp]
 
   end
 

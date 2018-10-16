@@ -13,21 +13,16 @@ else
 endif
 FLAGS += -Jmod -fopenmp
 
-all : pfss
+all : pfss mhs_finite
 
 pfss : harmonics.F90 pfss.F90
-	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $(DEFINE) $^ -o $@
+	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $(DEFINE) -Dpfss $^ -o $@
 
-null_check : harmonics.F90 null_check.f90
-	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $^ -o $@
+mhs_finite : harmonics.F90 pfss.F90
+	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $(DEFINE) -Dmhs -Dfinite $^ -o $@
 
 clean :
 	@rm -r pfss mod/*.mod
 
 datatidy :
 	@rm hmi*/synmap*.dat
-
-python : harmpy.f90
-	f2py -c -m harmpy harmpy.f90 --f90flags='-fopenmp -g' -lgomp
-
-	# gfortran fftwtest.f90 -o fftwtest -I/usr/include -lfftw3
