@@ -29,7 +29,7 @@ mhs_finite : harmonics.F90 pfss.F90
 	$(FC) $(FLAGS) $(FOPENMP) $(MODULES) $(LIBRARIES) $(DEFINE) -Dmhs -Dfinite $^ -o $@
 
 clean :
-	@rm -r pfss mod/*.mod
+	@rm -f pfss mhs_finite mod/*.mod
 
 datatidy :
-	@rm hmi*/synmap*.dat
+	@rm -f hmi*/synmap*.dat
