@@ -26,7 +26,7 @@ pfss : harmonics.F90 pfss.F90
 	$(FC) $(FLAGS) $(FOPENMP) $(MODULES) $(LIBRARIES) $(DEFINE) -Dpfss $^ -o $@
 
 mhs_finite : harmonics.F90 pfss.F90
-	$(FC) $(FLAGS) $(FOPENMP) $(MODULES) $(LIBRARIES) $(DEFINE) -Dmhs -Dfinite $^ -o $@
+	$(FC) $(FLAGS) $(FOPENMP) $(MODULES) $(LIBRARIES) $(DEFINE) -Dmhs $^ -o $@
 
 clean :
 	@rm -f pfss mhs_finite mod/*.mod
