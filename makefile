@@ -6,20 +6,27 @@ ifeq ($(sum), )
   sum = fft
 endif
 
+ifeq ($(openmp),off)
+else
+	ifneq ($(debug),on)
+		FOPENMP = -fopenmp
+	endif
+endif
+
 ifeq ($(strip $(mode)),debug)
 	FLAGS = -O0 -g -fbounds-check
 else
 	FLAGS = -O3 
 endif
-FLAGS += -Jmod -fopenmp
+FLAGS += -Jmod
 
 all : pfss mhs_finite
 
 pfss : harmonics.F90 pfss.F90
-	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $(DEFINE) -Dpfss $^ -o $@
+	$(FC) $(FLAGS) $(FOPENMP) $(MODULES) $(LIBRARIES) $(DEFINE) -Dpfss $^ -o $@
 
 mhs_finite : harmonics.F90 pfss.F90
-	$(FC) $(FLAGS) $(MODULES) $(LIBRARIES) $(DEFINE) -Dmhs -Dfinite $^ -o $@
+	$(FC) $(FLAGS) $(FOPENMP) $(MODULES) $(LIBRARIES) $(DEFINE) -Dmhs -Dfinite $^ -o $@
 
 clean :
 	@rm -r pfss mod/*.mod
