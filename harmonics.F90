@@ -30,13 +30,13 @@ module harmonics
   character(2) :: nsplitstr
 
   ! coefficients required for calculating harmonics
-  real(np), dimension(:,:), allocatable :: coeff1, coeff2, dfact
+  real(np), dimension(:, :), allocatable :: coeff1, coeff2, dfact
   
   ! all different global arrays for storing harmonics
-  real(np), dimension(:,:,:), allocatable :: plm
-  real(np), dimension(:,:,:), allocatable :: qlm, dqlm, qlm_sin
-  complex(np), dimension(:,:), allocatable :: blm0
-  complex(np), dimension(:,:,:), allocatable :: blm, alm
+  real(np), dimension(:, :, :), allocatable :: plm
+  real(np), dimension(:, :, :), allocatable :: qlm, dqlm, qlm_sin
+  complex(np), dimension(:, :), allocatable :: blm0
+  complex(np), dimension(:, :, :), allocatable :: blm, alm
 
   ! fft variables
   type(c_ptr) :: plan
@@ -189,8 +189,8 @@ module harmonics
     real(np) :: dt
     real(np), dimension(0:lmax) :: filter
     integer, dimension(0:lmax) :: ls
-    complex(np), dimension(:,:), allocatable :: br_blm
-    real(np), dimension(:,:), allocatable :: synmap
+    complex(np), dimension(:, :), allocatable :: br_blm
+    real(np), dimension(:, :), allocatable :: synmap
   
     nlon = size(synmap, 1)
     nlat = size(synmap, 2)
@@ -341,8 +341,8 @@ module harmonics
 #endif
     
     complex(qp) :: bess10
-    complex(qp), dimension(:,:), allocatable :: bess1, bess2, dbess1, dbess2
-    complex(qp), dimension(:,:), allocatable :: ibess1
+    complex(qp), dimension(:, :), allocatable :: bess1, bess2, dbess1, dbess2
+    complex(qp), dimension(:, :), allocatable :: ibess1
     
     complex(qp), dimension(:), allocatable :: d1, d2
 
@@ -466,8 +466,8 @@ module harmonics
 
     integer :: ir, ip, it, il, im, jm
     complex(np) :: mi, expphi
-    real(np), dimension(:,:,:), allocatable :: br, bt, bp
-    complex(np), dimension(:,:), allocatable :: bbr, bbt, bbp
+    real(np), dimension(:, :, :), allocatable :: br, bt, bp
+    complex(np), dimension(:, :), allocatable :: bbr, bbt, bbp
 
     allocate(br(nphi, ntheta, nrad), bt(nphi, ntheta, nrad), bp(nphi, ntheta, nrad))
 
@@ -478,6 +478,17 @@ module harmonics
     !$omp end parallel workshare
 
 #if analytic
+#if pfss
+          bbr(jm, :) = bbr(jm, :) + blm(il, im, ir)*qlm(il, im, :)
+          bbt(jm, :) = bbt(jm, :) + alm(il, im, ir)*dqlm(il, im, :)
+          bbp(jm, :) = bbp(jm, :) + mi*alm(il, im, ir)*qlm_sin(il, im, :)
+#elif mhs
+          bbr(jm, :) = bbr(jm, :) + il*(il+1)*blm(il, im, ir)*qlm(il, im, :)/rads(ir)
+          bbt(jm, :) = bbt(jm, :) + (mi*alpha*blm(il, im, ir)*qlm_sin(il, im, :) + &
+            alm(il, im, ir)*dqlm(il, im, :))
+          bbp(jm, :) = bbp(jm, :) + (-alpha*blm(il, im, ir)*dqlm(il, im, :) + &
+            mi*alm(il, im, ir)*qlm_sin(il, im, :))
+#endif
 
     ! calculating grid analytically
     !$omp parallel do private(ir, it, ip, im, il, mi, jm, expphi)
@@ -487,19 +498,46 @@ module harmonics
         do ip = 1, nphi
           do im = -lmax, lmax
             jm = abs(im)
-            mi = cmplx(0.0_np,1.0_np,np)*jm
+            mi = cmplx(0.0_np, 1.0_np, np)*im
             expphi = exp(mi*phis(ip))
             if (im >= 0) then
               do il = lmax, abs(im), -1
-                br(ip, it, ir) = br(ip, it, ir) + blm(il, jm, ir)*qlm(il, jm, it)*expphi
-                bt(ip, it, ir) = bt(ip, it, ir) + alm(il, jm, ir)*dqlm(il, jm, it)*expphi
-                bp(ip, it, ir) = bp(ip, it, ir) + mi*alm(il, jm, ir)*qlm_sin(il, jm, it)*expphi
+#if pfss
+                br(ip, it, ir) = br(ip, it, ir) + &
+                  blm(il, jm, ir)*qlm(il, jm, it)*expphi
+                bt(ip, it, ir) = bt(ip, it, ir) + &
+                  alm(il, jm, ir)*dqlm(il, jm, it)*expphi
+                bp(ip, it, ir) = bp(ip, it, ir) + &
+                  mi*alm(il, jm, ir)*qlm_sin(il, jm, it)*expphi
+#elif mhs
+                br(ip, it, ir) = br(ip, it, ir) + &
+                  il*(il+1)*blm(il, jm, ir)*qlm(il, jm, it)*expphi/rads(ir)
+                bt(ip, it, ir) = bt(ip, it, ir) + &
+                  (mi*alpha*blm(il, im, ir)*qlm_sin(il, im, it) + &
+                  alm(il, im, ir)*dqlm(il, im, it))*expphi
+                bp(ip, it, ir) = bp(ip, it, ir) + &
+                  (-alpha*blm(il, im, ir)*dqlm(il, im, it) + mi*alm(il, jm, ir)*qlm_sin(il, jm, it))*expphi
+#endif
               enddo
             else
               do il = lmax, abs(im), -1
-                br(ip, it, ir) = br(ip, it, ir) + conjg(blm(il, jm, ir)*qlm(il, jm, it)*expphi)
-                bt(ip, it, ir) = bt(ip, it, ir) + conjg(alm(il, jm, ir)*dqlm(il, jm, it)*expphi)
-                bp(ip, it, ir) = bp(ip, it, ir) + conjg(mi*alm(il, jm, ir)*qlm_sin(il, jm, it)*expphi)
+#if pfss
+                br(ip, it, ir) = br(ip, it, ir) + &
+                  conjg(blm(il, jm, ir)*qlm(il, jm, it))*expphi
+                bt(ip, it, ir) = bt(ip, it, ir) + &
+                  conjg(alm(il, jm, ir)*dqlm(il, jm, it))*expphi
+                bp(ip, it, ir) = bp(ip, it, ir) + &
+                  mi*conjg(alm(il, jm, ir)*qlm_sin(il, jm, it))*expphi
+#elif mhs
+                br(ip, it, ir) = br(ip, it, ir) + &
+                  il*(il+1)*conjg(blm(il, jm, ir)*qlm(il, jm, it))*expphi/rads(ir)
+                bt(ip, it, ir) = bt(ip, it, ir) + &
+                  (mi*alpha*conjg(blm(il, im, ir)*qlm_sin(il, im, it)) + &
+                  conjg(alm(il, im, ir)*dqlm(il, im, it)))*expphi
+                bp(ip, it, ir) = bp(ip, it, ir) + &
+                  (-alpha*conjg(blm(il, im, ir)*dqlm(il, im, it)) + &
+                  mi*conjg(alm(il, jm, ir)*qlm_sin(il, jm, it)))*expphi
+#endif
               enddo
             endif
           enddo
