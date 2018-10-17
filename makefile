@@ -1,10 +1,20 @@
 FC = gfortran
 LIBRARIES = -I/usr/include -lfftw3 -lm
-DEFINE = -D$(sum)
 
 ifeq ($(sum), )
   sum = fft
+else
+	ifeq ($(sum), analytic)
+		sum = analytic
+	else
+		ifeq ($(sum), fft)
+			sum = fft
+		else
+			echo "WARNING: invalid sum type"
+		endif
+	endif
 endif
+DEFINE = -D$(sum)
 
 ifeq ($(openmp),off)
 else
