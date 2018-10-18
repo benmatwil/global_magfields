@@ -102,11 +102,11 @@ module harmonics
     thetas = pi*real([(it, it=0,ntheta-1)], np)/(ntheta-1)
     phis = 2*pi*real([(ip, ip=0,nphi-1)], np)/(nphi-1)
 
-    nrad = size(rads,1)
-    ntheta = size(thetas,1)
-    nphi = size(phis,1)
+    nrad = size(rads, 1)
+    ntheta = size(thetas, 1)
+    nphi = size(phis, 1)
 
-    write(nsplitstr,'(I2.2)') nsplit
+    write(nsplitstr, '(I2.2)') nsplit
 
 #endif
 
@@ -262,7 +262,7 @@ module harmonics
     if (.not. allocated(coeff1)) call calc_coeffs()
     
     ! ntheta = 4*(lmax+1)+1
-    ntheta = size(theta,1)
+    ntheta = size(theta, 1)
     
     allocate(qlm(0:lmax, 0:lmax, ntheta), dqlm(0:lmax, 0:lmax, ntheta))
     qlm = 0
@@ -377,8 +377,8 @@ module harmonics
     dbess2 = 0
     
     ! calculate all required bessel functions
-    ! bess1(0,:) = sqrt(2/pi/rads1)*sin(rads1)
-    ! bess1(1,:) = sqrt(2/pi/rads1)*(sin(rads1)/rads1 - cos(rads1))
+    ! bess1(0, :) = sqrt(2/pi/rads1)*sin(rads1)
+    ! bess1(1, :) = sqrt(2/pi/rads1)*(sin(rads1)/rads1 - cos(rads1))
 
     allocate(ibess1(nrad, 3))
     ibess1(:, 1) = 0
@@ -402,7 +402,7 @@ module harmonics
       bess2(il, :) = ((2*il - 1)*bess2(il-1, :) - rads1*bess2(il-2, :))/rads1
     enddo
     ! wronskian if required    
-    ! bess1(il,:) = (2/pi/rads1 + bess2(il,:)*bess1(il-1,:))/bess2(il-1,:)
+    ! bess1(il, :) = (2/pi/rads1 + bess2(il, :)*bess1(il-1, :))/bess2(il-1, :)
 
     ! and all the derivatives
     dbess1(0, :) = alpha*sqrt(2/pi/rads1)*(cos(rads1) - sin(rads1)/rads1/2)
