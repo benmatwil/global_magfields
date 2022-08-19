@@ -24,7 +24,7 @@ else
 endif
 
 ifeq ($(strip $(mode)),debug)
-	FLAGS = -O0 -g -fbounds-check
+	FLAGS = -g -fbounds-check
 else
 	FLAGS = -O3 
 endif
@@ -33,10 +33,10 @@ FLAGS += -Jmod
 all : pfss mhs_finite
 
 pfss : harmonics.F90 pfss.F90
-	$(FC) $(FLAGS) $(FOPENMP) $(MODULES) $(LIBRARIES) $(DEFINE) -Dpfss $^ -o $@
+	$(FC) $(FLAGS) $(FOPENMP) $(MODULES) $(DEFINE) -Dpfss $^ -o $@ $(LIBRARIES)
 
 mhs_finite : harmonics.F90 pfss.F90
-	$(FC) $(FLAGS) $(FOPENMP) $(MODULES) $(LIBRARIES) $(DEFINE) -Dmhs $^ -o $@
+	$(FC) $(FLAGS) $(FOPENMP) $(MODULES) $(DEFINE) -Dmhs $^ -o $@ $(LIBRARIES)
 
 clean :
 	@rm -f pfss mhs_finite mod/*.mod
