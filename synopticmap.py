@@ -175,3 +175,6 @@ def run(filesearch, dir='hmi', maptype=None):
                 br1[:,i].tofile(savefile) # fortran order
             lons.tofile(savefile)
             lats.tofile(savefile)
+
+if __name__ == "__main__":
+    run("hmi*daily*.fits", maptype="daily")
